@@ -360,7 +360,7 @@ function flushForm(){
 }
 
 async function doSave(){
-  flushForm();
+  flushForm();S.form.ciudad=normCity(S.form.ciudad);
   if(!S.form.nombre.trim()){showToast('⚠️ El nombre es requerido');return;}
   const ai=parseFloat(S.form.abonoInicial)||0;
   let rec={...S.form};
@@ -617,7 +617,6 @@ function vForm(){
   <div class="f"><label>N° Control (tarjeta)</label><input id="fi-control" value="${esc(f.control)}" onchange="sf('control',this.value)" placeholder="001"/></div>
   <div class="f"><label>Fecha de consulta</label><input id="fi-fecha" type="date" value="${f.fecha}" onchange="sf('fecha',this.value)"/></div>
 </div>
-<div class="f"><label>Jornada / Evento (opcional)</label><input id="fi-jornada" value="${esc(f.jornada||'')}" onchange="sf('jornada',this.value)" placeholder="Ej: Jornada 15, Feria del barrio…"/></div>
 
 <div class="sl">Datos del paciente</div>
 <div class="f"><label>Nombre completo *</label><input id="fi-nombre" value="${esc(f.nombre)}" onchange="sf('nombre',this.value)" placeholder="Nombre completo"/></div>
@@ -816,11 +815,11 @@ function toggleJornada(encName){
 function vDashboard(){
   return`
 <div class="screen">
-<div class="topbar"><div><div class="topbar-title">📊 Dashboard</div><div class="topbar-sub">Finanzas y jornadas</div></div></div>
+<div class="topbar"><div><div class="topbar-title">📊 Dashboard</div><div class="topbar-sub">Finanzas y ventas</div></div></div>
 <div class="scroll">
 <div class="typetabs">
   <button class="typetab${S.dashTab==='fin'?' on-a':''}" onclick="setDashTab('fin')">💰 Finanzas</button>
-  <button class="typetab${S.dashTab==='jorn'?' on-p':''}" onclick="setDashTab('jorn')">🗓️ Jornadas</button>
+  <button class="typetab${S.dashTab==='jorn'?' on-p':''}" onclick="setDashTab('jorn')">🗓️ Ventas</button>
   <button class="typetab${S.dashTab==='mont'?' on-m':''}" onclick="setDashTab('mont')">🕶️ Monturas</button>
   <button class="typetab${S.dashTab==='lab'?' on-l':''}" onclick="setDashTab('lab')">🏢 Labs</button>
 </div>
@@ -945,16 +944,18 @@ function vGastosReport(ingresos,cL,cM,gastosMes){
 </div>`;
 }
 
+const normCity=c=>String(c||'').trim().replace(/\s+/g,' ').toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,b)=>a+b.toUpperCase());
+const grupoVenta=r=>(normCity(r.ciudad)||'Sin ciudad')+' · '+monthLabel((r.fecha||'').slice(0,7));
 function vDashJornadas(){
-  const withJ=S.records.filter(r=>r.jornada&&r.jornada.trim());
+  const withJ=S.records.filter(r=>tcli(r)==='activo'&&r.fecha);
   const groups={};
-  withJ.forEach(r=>{(groups[r.jornada]=groups[r.jornada]||[]).push(r);});
+  withJ.forEach(r=>{(groups[grupoVenta(r)]=groups[grupoVenta(r)]||[]).push(r);});
   const names=Object.keys(groups).sort((a,b)=>{
     const ma=groups[a].reduce((m,r)=>r.fecha>m?r.fecha:m,'');
     const mb=groups[b].reduce((m,r)=>r.fecha>m?r.fecha:m,'');
     return mb.localeCompare(ma);
   });
-  if(!names.length) return`<div class="empty"><span>🗓️</span><p>Aún no has asignado pacientes a una jornada.<br>Agrega el campo "Jornada" al crear o editar un paciente.</p></div>`;
+  if(!names.length) return`<div class="empty"><span>🗓️</span><p>Aún no hay ventas registradas.</p></div>`;
   return names.map(name=>{
     const grp=groups[name];
     const tot=grp.reduce((s,r)=>s+tvp(r),0);
